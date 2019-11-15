@@ -44,8 +44,10 @@ class DecisionTree(object):
     self.paraname:NumpyArray每一列的属性名称（包括首列和尾列的名称）
     self.n:决策树的最大深度
     self.tree:决策树的根节点
+    self.method:所采用的划分策略。如gini,gain
     '''
-    def __init__(self,paraname,dt,n=10):
+    def __init__(self,paraname,dt,n=10,method='gain'):
+        self.method=method
         self.paraname=paraname
         self.dt=dt
         self.n=n-1
@@ -95,6 +97,26 @@ class DecisionTree(object):
             ent=ent-cratio[i]*self.Ent(c[i])
         return ent
     
+    def Gini(self,dt):
+        t={}
+        for x in dt:
+            if x[-1] in t:
+                t[x[-1]]+=1
+            else:
+                t[x[-1]]=1
+        tp=1
+        l=len(dt)
+        for y in t:
+            tp-=(t[y]/l)**2
+        return tp
+    
+    def Gini_index(self,dt,xi):
+        giniindex=0
+        cratio,c=self.Split(dt,xi)
+        for i in range(len(cratio)):
+            giniindex+=cratio[i]*self.Gini(c[i])
+        return giniindex
+    
     def BestSplit(self,dt):
         sample_num=len(dt)
         parameter_num=len(dt[0])-2
@@ -103,14 +125,26 @@ class DecisionTree(object):
             if np.count_nonzero(dt[:,i]==dt[0,i])<sample_num:
                 xneeded.append(i)
         if len(xneeded)==0:return None,dt
-        bestgain=0
-        bestxi=0
-        for i in xneeded:
-            gain=self.Gain(dt,i)
-            if gain>bestgain:
-                bestgain=gain
-                bestxi=i
-        cratio,bestsplit=self.Split(dt,bestxi)
+        if (self.method=='Gain')or(self.method=='gain'):
+            bestgain=0
+            bestxi=1
+            for i in xneeded:
+                gain=self.Gain(dt,i)
+                if gain>bestgain:
+                    bestgain=gain
+                    bestxi=i
+            cratio,bestsplit=self.Split(dt,bestxi)
+        elif (self.method=='Gini')or(self.method=='gini'):
+            bestginiindex=1
+            bestxi=1
+            for i in xneeded:
+                giniindex=self.Gini_index(dt,i)
+                if giniindex<bestginiindex:
+                    bestginiindex=giniindex
+                    bestxi=i
+            cratio,bestsplit=self.Split(dt,bestxi)
+        else:
+            return print("error:BestSplit")
         return bestxi,bestsplit
     
     def showtree(self,tree,t=''):
@@ -124,7 +158,7 @@ if __name__=="__main__":
     import pandas as pd
     try:
         dt=pd.read_csv("DecisionTree.txt",encoding='gbk',sep=' ')
-        mytree=DecisionTree(dt.columns,dt.values)
+        mytree=DecisionTree(dt.columns,dt.values,method='gini')
         print("---原始数据---")
         print("===========================================")
         print(dt)
