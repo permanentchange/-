@@ -1,5 +1,6 @@
 '''
-测是文档是 DecisionTree.txt
+离散特征数据的测是文档是 DecisionTree.txt
+离散加连续特征数据的测是文档是 DecisionTree_plus.txt
 '''
 
 import numpy as np
@@ -40,32 +41,38 @@ class Node(object):
 class DecisionTree(object):
     '''
     决策树类
+    self.continuous:数据中的连续型特征所在的列的标号。第n列的标号为n-1。
     self.dt:决策树的原始数据。必须是NumpyArray类型，且是二维的。首列表示ID，尾列是类。
     self.paraname:NumpyArray每一列的属性名称（包括首列和尾列的名称）
     self.n:决策树的最大深度
     self.tree:决策树的根节点
     self.method:所采用的划分策略。如gini,gain
     '''
-    def __init__(self,paraname,dt,n=10,method='gain'):
+    def __init__(self,paraname,dt,n=10,method='gain',continuous={}):
+        self.continuous=continuous
         self.method=method
         self.paraname=paraname
         self.dt=dt
         self.n=n-1
         self.tree=Node(splitruler='All',dt=self.dt,father=None)
         self.TreeGenerate(self.tree)
+        print("ok")
         
     def TreeGenerate(self,curnode,n=0):
         if n>self.n:return curnode
         curylabel=set(curnode.dt[:,-1])
         if len(curylabel)==1:return curnode
-        bestxi,bestsplits=self.BestSplit(curnode.dt)
+        bestxi,cut,bestsplits=self.BestSplit(curnode.dt)
         if bestxi==None:return curnode
         curnode.son=[]
         for subdt in bestsplits:
-            splitrule=str(self.paraname[bestxi])+'='+str(subdt[0,bestxi])
-            sons=Node(splitrule,subdt)
+            splitruler=str(self.paraname[bestxi])+'='+str(subdt[0,bestxi])
+            sons=Node(splitruler,subdt)
             sons.father=curnode
-            curnode.son.append(self.TreeGenerate(sons,n+1))        
+            curnode.son.append(self.TreeGenerate(sons,n+1))
+        if bestxi in self.continuous:
+            curnode.son[0].splitruler=str(self.paraname[bestxi])+'<'+str(cut)
+            curnode.son[1].splitruler=str(self.paraname[bestxi])+'>'+str(cut)            
         return curnode
         
     def Split(self,dt,xi):
@@ -124,28 +131,61 @@ class DecisionTree(object):
         for i in range(1,parameter_num):
             if np.count_nonzero(dt[:,i]==dt[0,i])<sample_num:
                 xneeded.append(i)
-        if len(xneeded)==0:return None,dt
+        if len(xneeded)==0:return None,None,dt
         if (self.method=='Gain')or(self.method=='gain'):
             bestgain=0
-            bestxi=1
+            bestxi=0
             for i in xneeded:
-                gain=self.Gain(dt,i)
+                if i in self.continuous:
+                    tcut,tsplit,gain=self.Split_continuous(dt,i)
+                else:
+                    gain=self.Gain(dt,i)
                 if gain>bestgain:
                     bestgain=gain
                     bestxi=i
-            cratio,bestsplit=self.Split(dt,bestxi)
         elif (self.method=='Gini')or(self.method=='gini'):
             bestginiindex=1
             bestxi=1
             for i in xneeded:
-                giniindex=self.Gini_index(dt,i)
+                if i in self.continuous:
+                    tcut,tsplit,giniindex=self.Split_continuous(dt,i)
+                else:
+                    giniindex=self.Gini_index(dt,i)
                 if giniindex<bestginiindex:
                     bestginiindex=giniindex
                     bestxi=i
-            cratio,bestsplit=self.Split(dt,bestxi)
         else:
             return print("error:BestSplit")
-        return bestxi,bestsplit
+        if bestxi in self.continuous:
+            tcut,bestsplit,t=self.Split_continuous(dt,bestxi)
+        else:
+            cratio,bestsplit=self.Split(dt,bestxi)
+            tcut=None
+        return bestxi,tcut,bestsplit
+    
+    def Split_continuous(self,dt,xi):
+        sample_num=len(dt)
+        dt=dt[dt[:,xi].argsort()]
+        for cuti in range(1,sample_num):
+            c1=dt[:cuti,:]
+            c2=dt[cuti:,:]
+            r1=cuti/sample_num
+            r2=1-r1
+            if (self.method=='Gain')or(self.method=='gain'):
+                tp=self.Ent(dt)-r1*self.Ent(c1)-r2*self.Ent(c2)
+                if cuti==1:
+                    cut,g=1,tp
+                elif tp>g:
+                    print(tp)
+                    cut,g=cuti,tp
+            elif (self.method=='Gini')or(self.method=='gini'):
+                tp=r1*self.Gini(c1)+r2*self.Gini(c2)
+                if cuti==1:cut,g=cuti,tp
+                elif tp<g:cut,g=cuti,tp
+            else:
+                return print("error:BestSplit_continuous")
+        c=[dt[:cut],dt[cut:]]        
+        return (dt[cut,xi]+dt[cut-1,xi])/2,c,g
     
     def showtree(self,tree,t=''):
         if tree.son==None:return print(t+tree.splitruler,'>>',tree.classname)
@@ -157,8 +197,17 @@ class DecisionTree(object):
 if __name__=="__main__":
     import pandas as pd
     try:
-        dt=pd.read_csv("DecisionTree.txt",encoding='gbk',sep=' ')
-        mytree=DecisionTree(dt.columns,dt.values,method='gini')
+        
+#        ##这里是没有连续型数据的测试
+#        dt=pd.read_csv("DecisionTree.txt",encoding='gbk',sep=' ')
+#        mytree=DecisionTree(dt.columns,dt.values,method='gain')
+
+        ##这里是连续型数据的测是，其中输入DecisionTree的NumpyArray中的第dt[:,7]和dt[:,8]是连续型数据
+        dt=pd.read_csv("DecisionTree_plus.txt",encoding='gbk',sep=' ')
+        mytree=DecisionTree(dt.columns,dt.values,method='gain',continuous={7,8})
+        
+
+
         print("---原始数据---")
         print("===========================================")
         print(dt)
