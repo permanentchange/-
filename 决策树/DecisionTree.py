@@ -1,3 +1,7 @@
+'''
+测是文档是 DecisionTree.txt
+'''
+
 import numpy as np
 log2=np.log2
 
@@ -112,6 +116,20 @@ class DecisionTree(object):
     def showtree(self,tree,t=''):
         if tree.son==None:return print(t+tree.splitruler,'>>',tree.classname)
         print(t+tree.splitruler)
-        t=t+'--'
+        t=t+'---'
         for x in tree.son:
             self.showtree(x,t)
+
+if __name__=="__main__":
+    import pandas as pd
+    try:
+        dt=pd.read_csv("DecisionTree.txt",encoding='gbk',sep=' ')
+        mytree=DecisionTree(dt.columns,dt.values)
+        print("---原始数据---")
+        print("===========================================")
+        print(dt)
+        print("===========================================\n\n")
+        print("---决策树---")
+        mytree.showtree(mytree.tree)
+    finally:
+        pass
