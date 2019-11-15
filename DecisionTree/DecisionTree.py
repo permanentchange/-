@@ -55,8 +55,7 @@ class DecisionTree(object):
         self.dt=dt
         self.n=n-1
         self.tree=Node(splitruler='All',dt=self.dt,father=None)
-        self.TreeGenerate(self.tree)
-        print("ok")
+        print("This DecisionTree is initialized.")
         
     def TreeGenerate(self,curnode,n=0):
         if n>self.n:return curnode
@@ -72,7 +71,8 @@ class DecisionTree(object):
             curnode.son.append(self.TreeGenerate(sons,n+1))
         if bestxi in self.continuous:
             curnode.son[0].splitruler=str(self.paraname[bestxi])+'<'+str(cut)
-            curnode.son[1].splitruler=str(self.paraname[bestxi])+'>'+str(cut)            
+            curnode.son[1].splitruler=str(self.paraname[bestxi])+'>'+str(cut)
+        if n==0:print("The Tree is generated.")
         return curnode
         
     def Split(self,dt,xi):
@@ -176,7 +176,6 @@ class DecisionTree(object):
                 if cuti==1:
                     cut,g=1,tp
                 elif tp>g:
-                    print(tp)
                     cut,g=cuti,tp
             elif (self.method=='Gini')or(self.method=='gini'):
                 tp=r1*self.Gini(c1)+r2*self.Gini(c2)
@@ -200,7 +199,7 @@ if __name__=="__main__":
         
 #        ##这里是没有连续型数据的测试
 #        dt=pd.read_csv("DecisionTree.txt",encoding='gbk',sep=' ')
-#        mytree=DecisionTree(dt.columns,dt.values,method='gain')
+#        mytree=DecisionTree(dt.columns,dt.values,method='gini')
 
         ##这里是连续型数据的测是，其中输入DecisionTree的NumpyArray中的第dt[:,7]和dt[:,8]是连续型数据
         dt=pd.read_csv("DecisionTree_plus.txt",encoding='gbk',sep=' ')
@@ -209,10 +208,11 @@ if __name__=="__main__":
 
 
         print("---原始数据---")
-        print("===========================================")
+        print("===============================================")
         print(dt)
-        print("===========================================\n\n")
+        print("===============================================\n\n")
         print("---决策树---")
+        mytree.TreeGenerate(mytree.tree)
         mytree.showtree(mytree.tree)
     finally:
         pass
